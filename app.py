@@ -1,5 +1,6 @@
 import os
 import random
+import math
 from typing import Dict, List, Optional, Literal, Tuple
 
 import geopandas as gpd
@@ -22,107 +23,146 @@ st.set_page_config(
 st.markdown(
     """
 <style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        background: linear-gradient(45deg, #1f77b4, #17a2b8);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-align: center;
-        margin-bottom: 2rem;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-    }
+:root {
+    --color-slate: #3D517B;
+    --color-primary: #568EE2;
+    --color-navy: #051C33;
+    --color-teal: #6FB5BA;
+    --color-sand: #DFD1B6;
+    --color-lilac: #A59FD0;
+    --color-error: #C33241;
+    --color-success: #377F86;
+    --color-warning: #C35309;
+}
 
-    .stApp {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    }
+/* App background + default text colour (light background, dark text) */
+.stApp {
+    background: linear-gradient(180deg, #ffffff 0%, var(--color-sand) 100%);
+    color: var(--color-navy);
+}
 
-    .municipality-card {
-        background: linear-gradient(145deg, #ffffff, #f0f2f5);
-        padding: 1.5rem;
-        border-radius: 15px;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-        margin: 1rem 0;
-        border-left: 5px solid #1f77b4;
-        transition: transform 0.2s ease-in-out;
-    }
+/* Main header */
+.main-header {
+    font-size: 2.5rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--color-primary), var(--color-slate));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+    margin-bottom: 1rem;
+}
 
-    .municipality-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 24px rgba(0,0,0,0.15);
-    }
+/* Tagline under header */
+.tagline {
+    color: var(--color-navy);
+    font-style: italic;
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+}
 
-    .score-badge {
-        background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 25px;
-        font-weight: bold;
-        display: inline-block;
-        margin: 0.3rem 0;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        font-size: 0.9rem;
-    }
+/* Sidebar */
+.sidebar .sidebar-content {
+    background: linear-gradient(180deg, var(--color-navy) 0%, #111827 100%);
+}
+.sidebar .sidebar-content,
+.sidebar .sidebar-content * {
+    color: #F9FAFB !important;
+}
 
-    .municipality-name {
-        font-size: 1.4rem;
-        font-weight: bold;
-        color: #2c3e50;
-        margin-bottom: 0.8rem;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-    }
+/* Municipality cards */
+.municipality-card {
+    background: #ffffff;
+    padding: 1.5rem;
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(5, 28, 51, 0.12);
+    margin: 1rem 0;
+    border-left: 5px solid var(--color-primary);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+.municipality-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(5, 28, 51, 0.2);
+}
 
-    .detail-panel {
-        background: linear-gradient(145deg, #ffffff, #f8f9fa);
-        border: 2px solid #e9ecef;
-        border-radius: 15px;
-        padding: 2rem;
-        margin: 1.5rem 0;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-    }
+/* Score badge */
+.score-badge {
+    background: linear-gradient(90deg, var(--color-primary), var(--color-teal));
+    color: #ffffff;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    font-weight: 600;
+    display: inline-block;
+    margin: 0.3rem 0;
+    box-shadow: 0 4px 10px rgba(5, 28, 51, 0.25);
+    font-size: 0.9rem;
+}
 
-    .concept-icon {
-        font-size: 1.3rem;
-        margin-right: 0.5rem;
-    }
+/* Municipality title */
+.municipality-name {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--color-slate);
+    margin-bottom: 0.8rem;
+}
 
-    .sidebar .sidebar-content {
-        background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
-    }
+/* Detail panel */
+.detail-panel {
+    background: #ffffff;
+    border: 1px solid rgba(61, 81, 123, 0.15);
+    border-radius: 15px;
+    padding: 2rem;
+    margin: 1.5rem 0;
+    box-shadow: 0 10px 25px rgba(5, 28, 51, 0.15);
+}
 
-    .stButton > button {
-        background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 25px;
-        padding: 0.5rem 1.5rem;
-        font-weight: bold;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    }
+/* Icons in detail list */
+.concept-icon {
+    font-size: 1.3rem;
+    margin-right: 0.5rem;
+}
 
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.3);
-    }
+/* Sidebar section background cards */
+.metric-container {
+    background: linear-gradient(145deg, #111827, #1f2937);
+    padding: 1rem;
+    border-radius: 10px;
+    margin: 0.5rem 0;
+    border-left: 4px solid var(--color-success);
+}
 
-    .metric-container {
-        background: linear-gradient(145deg, #f8f9fa, #ffffff);
-        padding: 1rem;
-        border-radius: 10px;
-        margin: 0.5rem 0;
-        border-left: 4px solid #28a745;
-    }
+/* Buttons */
+.stButton > button {
+    background: linear-gradient(90deg, var(--color-primary), var(--color-teal));
+    color: #ffffff;
+    border: none;
+    border-radius: 999px;
+    padding: 0.5rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 10px rgba(5, 28, 51, 0.35);
+}
+.stButton > button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(5, 28, 51, 0.45);
+}
 
-    .comparison-header {
-        background: linear-gradient(45deg, #ff6b6b, #ee5a52);
-        color: white;
-        padding: 0.8rem;
-        border-radius: 10px;
-        text-align: center;
-        margin-bottom: 1rem;
-        font-weight: bold;
-    }
+/* Comparison header */
+.comparison-header {
+    background: var(--color-slate);
+    color: #ffffff;
+    padding: 0.8rem;
+    border-radius: 10px;
+    text-align: center;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+/* Plot container */
+.plot-container {
+    border-radius: 16px;
+    overflow: hidden;
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -142,13 +182,13 @@ CRITERIA: List[str] = [
 ]
 
 CRITERIA_LABELS: Dict[str, str] = {
-    "AccessibilityHoursMonthly": "Time lost in transport",
-    "EducationQuality": "Education quality",
-    "AirQuality": "Air/environment quality",
-    "BuildingQuality": "Housing attractiveness",
-    "TransportInfraQuality": "Transport infrastructure",
-    "EconomicDynamism": "Economic dynamism",
-    "HousePriceSqm": "Housing cost (€/m²)",
+    "AccessibilityHoursMonthly": "Ahorro de tiempo en desplazamientos",
+    "EducationQuality": "Calidad de la educación",
+    "AirQuality": "Calidad del aire y del entorno",
+    "BuildingQuality": "Atractividad de las viviendas",
+    "TransportInfraQuality": "Calidad de las infraestructuras de transporte",
+    "EconomicDynamism": "Dinamismo económico",
+    "HousePriceSqm": "Precio de la vivienda (€/m²)",
 }
 
 CRITERIA_ICONS: Dict[str, str] = {
@@ -174,27 +214,22 @@ COST_COLUMNS: Dict[str, str] = {
 }
 
 ACC_COLUMNS: Dict[str, Dict[str, str]] = {
-    # Sports
     "sport": {
         "coche": "ACC_deporte_tiempo_coche",
         "TransportePublico": "ACC_deporte_tiempo_TransportePublico",
     },
-    # GP
     "gp": {
         "coche": "ACC_sanidad_tiempo_coche_OfertaAsistencial_MedicinaGeneralDeFamilia",
         "TransportePublico": "ACC_sanidad_tiempo_TransportePublico_OfertaAsistencial_MedicinaGeneralDeFamilia",
     },
-    # Pharmacies
     "pharmacy": {
         "coche": "ACC_farmacias_tiempo_coche",
         "TransportePublico": "ACC_farmacias_tiempo_TransportePublico",
     },
-    # Gas stations
     "gas": {
         "coche": "ACC_gasolineras_tiempo_coche",
-        "TransportePublico": "ACC_gasolineras_tiempo_coche",  # fallback
+        "TransportePublico": "ACC_gasolineras_tiempo_coche",
     },
-    # Supermarkets
     "supermarket": {
         "coche": "OSM_supermercados_tiempo_coche",
         "TransportePublico": "OSM_supermercados_tiempo_TransportePublico",
@@ -235,7 +270,7 @@ ACC_COLUMNS: Dict[str, Dict[str, str]] = {
 }
 
 # ---------------------------------------------------------------------
-# AHP helper functions (your exact logic)
+# AHP helper functions
 # ---------------------------------------------------------------------
 RI_TABLE: Dict[int, float] = {
     1: 0.00,
@@ -255,15 +290,6 @@ RI_TABLE: Dict[int, float] = {
 
 
 def preferences_to_matrix(answers, mode: str) -> np.ndarray:
-    """Convert user preferences into a full reciprocal Saaty matrix.
-
-    Args:
-        answers: List/array of floats. If mode == "ranking", they are ranks or scores.
-        mode: "comparison" or "ranking".
-
-    Returns:
-        np.ndarray: Complete reciprocal matrix.
-    """
     mode = str(mode).lower()
 
     if mode == "comparison":
@@ -299,7 +325,6 @@ def preferences_to_matrix(answers, mode: str) -> np.ndarray:
 
 
 def compute_cr(A: np.ndarray) -> float:
-    """Compute the Consistency Ratio of a reciprocal matrix."""
     vals, _ = np.linalg.eig(A)
     lam_max = max(vals.real)
     n = A.shape[0]
@@ -310,7 +335,6 @@ def compute_cr(A: np.ndarray) -> float:
 
 
 def project_to_consistent(A: np.ndarray) -> np.ndarray:
-    """Project a matrix to the closest consistent reciprocal matrix."""
     n = A.shape[0]
     M = np.log(A)
     ones = np.ones((n, n))
@@ -323,18 +347,15 @@ def project_to_consistent(A: np.ndarray) -> np.ndarray:
 
 
 def compute_weights(A: np.ndarray) -> np.ndarray:
-    """Compute principal eigenvector normalized to sum=1."""
     vals, vecs = np.linalg.eig(A)
     w = np.abs(vecs[:, np.argmax(vals.real)])
     return w / w.sum()
 
 
 def preferences_to_weights(answers: np.ndarray, mode: str) -> np.ndarray:
-    """Full AHP pipeline: preferences → matrix → projection (optional) → weights."""
     A = preferences_to_matrix(answers, mode)
     A = A if compute_cr(A) < 0.1 else project_to_consistent(A)
     return compute_weights(A)
-
 
 # ---------------------------------------------------------------------
 # Questionnaire mappings
@@ -377,7 +398,6 @@ EDU_LEVEL_OPTIONS = ["Preinfantil", "Infantil", "Primaria", "Secundaria"]
 
 
 def edu_level_to_key(level: str, variant: Literal["public", "pubpriv"]) -> str:
-    """Map education level + school type to the ACC service key."""
     lv = level.lower()
     if lv == "preinfantil":
         return "edu_preinf_public" if variant == "public" else "edu_preinf_pubpriv"
@@ -389,19 +409,11 @@ def edu_level_to_key(level: str, variant: Literal["public", "pubpriv"]) -> str:
         return "edu_sec_public" if variant == "public" else "edu_sec_pubpriv"
     raise ValueError(f"Unknown education level: {level}")
 
-
 # ---------------------------------------------------------------------
 # Data loading & images
 # ---------------------------------------------------------------------
 @st.cache_data
 def load_data() -> Tuple[pd.DataFrame, gpd.GeoDataFrame]:
-    """Load merged_dataset.csv and geographic boundaries (Madrid only).
-
-    Returns:
-        Tuple of:
-            - df: attributes (one row per municipality).
-            - gdf: GeoDataFrame with geometry + attributes.
-    """
     script_dir = os.path.dirname(os.path.abspath(__file__))
     csv_path = os.path.join(script_dir, "merged_dataset.csv")
     if not os.path.exists(csv_path):
@@ -418,7 +430,6 @@ def load_data() -> Tuple[pd.DataFrame, gpd.GeoDataFrame]:
         st.stop()
 
     import warnings
-
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         gdf = gpd.read_file(shp_path)
@@ -428,7 +439,6 @@ def load_data() -> Tuple[pd.DataFrame, gpd.GeoDataFrame]:
         st.error("No se encontraron municipios de Madrid en los datos geográficos.")
         st.stop()
 
-    # Merge shapefile with merged_dataset on municipality name
     madrid_gdf["NAMEUNIT"] = madrid_gdf["NAMEUNIT"].astype(str)
     df["Nombre"] = df["Nombre"].astype(str)
 
@@ -444,7 +454,6 @@ def load_data() -> Tuple[pd.DataFrame, gpd.GeoDataFrame]:
 
 @st.cache_data
 def load_placeholder_images() -> Dict[str, Optional[Image.Image]]:
-    """Load placeholder images used in the cards."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     images: Dict[str, Optional[Image.Image]] = {}
     for i in range(1, 7):
@@ -455,7 +464,6 @@ def load_placeholder_images() -> Dict[str, Optional[Image.Image]]:
         except Exception:
             images[f"placeholder{i}"] = None
     return images
-
 
 # ---------------------------------------------------------------------
 # Accessibility aggregation and ranking
@@ -471,7 +479,6 @@ def compute_accessibility_hours(
     edu_levels: List[str],
     edu_acc_weight: float,
 ) -> pd.DataFrame:
-    """Compute monthly accessibility hours per municipality based on questionnaire."""
     out = df[["codigo", "Nombre"]].copy()
     total = np.zeros(len(df), dtype=float)
 
@@ -481,30 +488,30 @@ def compute_accessibility_hours(
         return w_car * mc + (1.0 - w_car) * mp
 
     def add_hours(key: str, minutes_one_way: np.ndarray, visits_per_month: float, weight: float = 1.0) -> None:
+        nonlocal total
         hours = weight * visits_per_month * (2.0 * minutes_one_way) / 60.0
         out[f"hrs_{key}"] = hours
-        nonlocal total
         total += hours
 
-    # Supermarkets – essential, ~8 visits/month
+    # Supermarkets
     mins_super = blend_minutes(
         ACC_COLUMNS["supermarket"]["coche"],
         ACC_COLUMNS["supermarket"]["TransportePublico"],
     )
     add_hours("supermarket", mins_super, visits_per_month=8.0, weight=1.0)
 
-    # Gas stations – scaled by car usage
+    # Gas stations
     mins_gas = df[ACC_COLUMNS["gas"]["coche"]].astype(float)
     add_hours("gas", mins_gas, visits_per_month=2.0, weight=max(0.0, min(1.0, w_car)))
 
-    # Sport – scaled by sports frequency
+    # Sport
     mins_sport = blend_minutes(
         ACC_COLUMNS["sport"]["coche"],
         ACC_COLUMNS["sport"]["TransportePublico"],
     )
     add_hours("sport", mins_sport, visits_per_month=4.0, weight=max(0.0, min(1.0, w_sport)))
 
-    # Health – GP and pharmacies, scaled by hospital usage
+    # Health – GP and pharmacies
     mins_gp = blend_minutes(
         ACC_COLUMNS["gp"]["coche"],
         ACC_COLUMNS["gp"]["TransportePublico"],
@@ -515,14 +522,9 @@ def compute_accessibility_hours(
         ACC_COLUMNS["pharmacy"]["coche"],
         ACC_COLUMNS["pharmacy"]["TransportePublico"],
     )
-    add_hours(
-        "pharmacy",
-        mins_pharm,
-        visits_per_month=1.0,
-        weight=max(0.0, min(1.0, w_hospital)),
-    )
+    add_hours("pharmacy", mins_pharm, visits_per_month=1.0, weight=max(0.0, min(1.0, w_hospital)))
 
-    # Education – only if user has kids and selected levels; scaled by edu_acc_weight
+    # Education
     if edu_has_kids and edu_variant in ("public", "pubpriv") and edu_levels and edu_acc_weight > 0.0:
         per_level = 1.0 / len(edu_levels)
         for level in edu_levels:
@@ -547,7 +549,6 @@ def normalize_criteria(
     cost_cols: Dict[str, str],
     accessibility_col: str = "AccessibilityHoursMonthly",
 ) -> pd.DataFrame:
-    """Normalize criteria to [0,1] with higher=better (invert costs)."""
     out = df.copy()
 
     for crit, col in benefit_cols.items():
@@ -555,12 +556,10 @@ def normalize_criteria(
         rng = x.max() - x.min()
         out[f"NORM_{crit}"] = (x - x.min()) / (rng if rng != 0 else 1.0)
 
-    # House price – cost
     xp = out[cost_cols["HousePriceSqm"]].astype(float)
     prng = xp.max() - xp.min()
     out["NORM_HousePriceSqm"] = 1.0 - (xp - xp.min()) / (prng if prng != 0 else 1.0)
 
-    # Accessibility – cost
     xa = out[accessibility_col].astype(float)
     arng = xa.max() - xa.min()
     out["NORM_AccessibilityHoursMonthly"] = 1.0 - (xa - xa.min()) / (arng if arng != 0 else 1.0)
@@ -569,7 +568,6 @@ def normalize_criteria(
 
 
 def compute_scores(df_norm: pd.DataFrame, weights: Dict[str, float]) -> pd.DataFrame:
-    """Compute weighted-sum score and criterion contributions for each municipality."""
     out = df_norm.copy()
     score = np.zeros(len(out), dtype=float)
 
@@ -581,30 +579,19 @@ def compute_scores(df_norm: pd.DataFrame, weights: Dict[str, float]) -> pd.DataF
         score += contrib.values
 
     out["Score"] = score
-    # Scale to 0–100 for UI
     max_score = out["Score"].max()
     out["weighted_score"] = (out["Score"] / max_score * 100.0) if max_score > 0 else 0.0
     return out.sort_values("Score", ascending=False).reset_index(drop=True)
 
 
 def equal_weights() -> Dict[str, float]:
-    """Equal weights over all criteria."""
     w = 1.0 / len(CRITERIA)
     return {c: w for c in CRITERIA}
-
 
 # ---------------------------------------------------------------------
 # Heatmap
 # ---------------------------------------------------------------------
 def create_heatmap(gdf: gpd.GeoDataFrame):
-    """Create interactive heatmap from scored GeoDataFrame.
-
-    We only rely on columns that we know exist:
-    - geometry
-    - 'Nombre'
-    - 'weighted_score'
-    """
-    # Convert to WGS84 for plotting
     gdf_plot = gdf.to_crs(epsg=4326)
 
     fig = px.choropleth_mapbox(
@@ -612,43 +599,42 @@ def create_heatmap(gdf: gpd.GeoDataFrame):
         geojson=gdf_plot.geometry.__geo_interface__,
         locations=gdf_plot.index,
         color="weighted_score",
-        color_continuous_scale="RdYlBu_r",
+        color_continuous_scale=[
+            "#DFD1B6",  # Sand - low
+            "#6FB5BA",  # Teal - medium
+            "#568EE2",  # Primary - high
+            "#3D517B",  # Slate - very high
+        ],
         range_color=[gdf_plot["weighted_score"].min(), gdf_plot["weighted_score"].max()],
         mapbox_style="open-street-map",
         zoom=8,
-        center={"lat": 40.4168, "lon": -3.7038},  # Madrid
+        center={"lat": 40.4168, "lon": -3.7038},
         opacity=0.7,
         title="Mapa de municipios según tu perfil",
         custom_data=[gdf_plot["Nombre"]],
-        labels={"weighted_score": "Puntuación"},
+        labels={"weighted_score": "Puntuación (más alto = mejor)"},
     )
 
     fig.update_traces(
-        hovertemplate=(
-            "<b>%{customdata[0]}</b><br>"
-            "Puntuación: %{z:.1f}<extra></extra>"
-        )
+        hovertemplate="<b>%{customdata[0]}</b><br>Puntuación: %{z:.1f}<extra></extra>"
     )
-
     fig.update_layout(
         height=600,
         margin={"r": 0, "t": 50, "l": 0, "b": 0},
+        clickmode="event+select",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
     )
-
     return fig
 
-
-
-
 # ---------------------------------------------------------------------
-# Municipality details (uses criteria contributions)
+# Municipality details + cards
 # ---------------------------------------------------------------------
 def show_single_municipality_details(
     muni: pd.Series,
     images: Dict[str, Optional[Image.Image]],
     title: Optional[str] = None,
 ) -> None:
-    """Show details for a single municipality (card-style)."""
     if title:
         st.markdown(f"**{title}**")
 
@@ -695,11 +681,11 @@ def show_single_municipality_details(
         with col_bar:
             pct = int(value * 100)
             if pct >= 70:
-                color = "#28a745"
+                color = "#377F86"  # Success
             elif pct >= 40:
-                color = "#ffc107"
+                color = "#C35309"  # Warning
             else:
-                color = "#dc3545"
+                color = "#C33241"  # Error
 
             progress_html = f"""
             <div style="background-color: #e9ecef; border-radius: 10px; height: 20px; width: 100%;">
@@ -713,21 +699,93 @@ def show_single_municipality_details(
             st.markdown(progress_html, unsafe_allow_html=True)
 
 
+def render_municipality_card(muni: pd.Series, images: Dict[str, Optional[Image.Image]]) -> None:
+    st.markdown('<div class="municipality-card">', unsafe_allow_html=True)
+
+    col1, col2 = st.columns([1, 3])
+
+    with col1:
+        random.seed(hash(muni["Nombre"]))
+        img_key = f"placeholder{random.randint(1, 6)}"
+        if images.get(img_key) is not None:
+            st.image(images[img_key], caption=muni["Nombre"], use_container_width=True)
+
+    with col2:
+        st.markdown(
+            f"<div class='municipality-name'>{muni['Nombre']}</div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            f'<div class="score-badge">Puntuación: {muni["weighted_score"]:.1f}</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            (
+                f"👥 **Población:** {int(muni['IDE_PoblacionTotal']):,}<br>"
+                f"💰 **Precio vivienda:** {muni['IDE_PrecioPorMetroCuadrado']:.0f} €/m²<br>"
+                f"⌛ **Horas al mes en transporte:** {muni['AccessibilityHoursMonthly']:.1f}"
+            ),
+            unsafe_allow_html=True,
+        )
+
+        if st.button("Ver detalles", key=f"details_btn_{muni['codigo']}"):
+            st.session_state["selected_municipality"] = muni
+            st.session_state["details_origin"] = "list"                    # <- came from list
+            st.session_state["suppress_map_selection"] = True              # ignore old map click
+            st.session_state["switch_view_to"] = "📋 Lista de municipios"
+            st.rerun()
+
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
 def show_municipality_details(
     municipality: pd.Series,
     images: Dict[str, Optional[Image.Image]],
     all_scores: pd.DataFrame,
 ) -> None:
-    """Show main municipality details, plus optional comparison."""
     with st.container():
         header_col1, header_col2 = st.columns([4, 1])
         with header_col1:
+            st.markdown("## 📍 Detalles del municipio")
             st.markdown(f"**{municipality['Nombre']}**")
         with header_col2:
             close_key = f"close_details_{municipality['codigo']}"
-            if st.button("❌ Cerrar", key=close_key):
-                st.session_state.clear_municipality_selection = True
-                st.rerun()
+        if st.button("❌ Cerrar", key=close_key):
+            origin = st.session_state.get("details_origin")
+
+            # Request a view switch; will be applied at top of main()
+            if origin == "map":
+                st.session_state["switch_view_to"] = "🗺️ Mapa de municipios"
+            elif origin == "list":
+                st.session_state["switch_view_to"] = "📋 Lista de municipios"
+
+            st.session_state["suppress_map_selection"] = True
+
+            for key in [
+                "selected_municipality",
+                "comparison_municipality",
+                "comparison_selector",
+                "comparison_selector_in_panel",
+                "details_origin",
+            ]:
+                st.session_state.pop(key, None)
+
+            st.rerun()
+
+
+            # Clear selection + comparison info
+            for key in [
+                "selected_municipality",
+                "comparison_municipality",
+                "comparison_selector",
+                "comparison_selector_in_panel",
+                "details_origin",
+            ]:
+                st.session_state.pop(key, None)
+
+            st.rerun()
+
 
         comparison_mode = "comparison_municipality" in st.session_state
 
@@ -749,7 +807,7 @@ def show_municipality_details(
                 with comp_header_col2:
                     end_comparison_key = f"end_comparison_{municipality['codigo']}"
                     if st.button("🔄", key=end_comparison_key, help="Terminar comparación"):
-                        st.session_state.clear_comparison_only = True
+                        st.session_state["clear_comparison_only"] = True
                         st.rerun()
 
                 show_single_municipality_details(comparison_muni, images, None)
@@ -783,7 +841,7 @@ def show_municipality_details(
                     if selected != "Selecciona un municipio..." and selected != current_selection:
                         comp_name = selected.split(" (Puntuación:")[0]
                         comp_row = all_scores[all_scores["Nombre"] == comp_name].iloc[0]
-                        st.session_state.comparison_municipality = comp_row
+                        st.session_state["comparison_municipality"] = comp_row
                         st.rerun()
         else:
             show_single_municipality_details(municipality, images)
@@ -804,26 +862,24 @@ def show_municipality_details(
                 if selected != "Selecciona un municipio...":
                     comp_name = selected.split(" (Puntuación:")[0]
                     comp_row = all_scores[all_scores["Nombre"] == comp_name].iloc[0]
-                    st.session_state.comparison_municipality = comp_row
+                    st.session_state["comparison_municipality"] = comp_row
                     st.rerun()
-
 
 # ---------------------------------------------------------------------
 # Main app
 # ---------------------------------------------------------------------
 def main() -> None:
-    # Clear session state flags (selection / comparison)
-    if st.session_state.get("clear_municipality_selection", False):
-        for key in [
-            "selected_municipality",
-            "comparison_municipality",
-            "comparison_selector",
-            "comparison_selector_in_panel",
-            "map_municipality_selector",
-            "clear_municipality_selection",
-        ]:
-            st.session_state.pop(key, None)
+    # --- Handle programmatic view switching BEFORE any widgets are created ---
+    if "view_selector" not in st.session_state:
+        st.session_state["view_selector"] = "🗺️ Mapa de municipios"
 
+    if (
+        "switch_view_to" in st.session_state
+        and st.session_state["switch_view_to"] is not None
+    ):
+        # apply requested switch, then clear the flag
+        st.session_state["view_selector"] = st.session_state["switch_view_to"]
+        st.session_state["switch_view_to"] = None    
     if st.session_state.get("clear_comparison_only", False):
         for key in [
             "comparison_municipality",
@@ -838,21 +894,20 @@ def main() -> None:
         unsafe_allow_html=True,
     )
     st.markdown(
-        "*Encuentra tu municipio ideal en la Comunidad de Madrid según "
-        "tu estilo de vida, tu familia y tus prioridades.*"
+        '<p class="tagline">Encuentra tu municipio ideal en la Comunidad de Madrid según tu estilo de vida, tu familia y tus prioridades.</p>',
+        unsafe_allow_html=True,
     )
 
     # Load data
     df_raw, gdf_raw = load_data()
     images = load_placeholder_images()
 
-    # Sidebar questionnaire
-    # Sidebar questionnaire
-    st.sidebar.header("Tu perfil y prioridades")
+    # ---------------- Sidebar ----------------
+    with st.sidebar:
+        st.header("Tu perfil y prioridades")
 
-    with st.sidebar.form("user_preferences"):
-        # ---- Movilidad – coche ----
-        st.sidebar.subheader("Movilidad – coche")
+        # Movilidad
+        st.subheader("Movilidad – coche")
         car_use = st.selectbox(
             "¿Con qué frecuencia usarías el coche?",
             options=CAR_FREQ_LABELS,
@@ -860,8 +915,8 @@ def main() -> None:
         )
         w_car = CAR_FREQ_TO_WCAR[car_use]
 
-        # ---- Familia – educación ----
-        st.sidebar.subheader("Familia – educación")
+        # Familia – educación
+        st.subheader("Familia – educación")
         has_kids_ans = st.radio(
             "¿Tienes hij@s pequeñ@s?",
             options=["No", "Sí"],
@@ -896,8 +951,8 @@ def main() -> None:
                 help="0 = solo calidad educativa (ATR), 1 = solo accesibilidad (ACC).",
             )
 
-        # ---- Estilo de vida – deporte ----
-        st.sidebar.subheader("Estilo de vida – deporte")
+        # Estilo de vida – deporte
+        st.subheader("Estilo de vida – deporte")
         sport_use = st.selectbox(
             "¿Con qué frecuencia harías deporte?",
             options=SPORT_FREQ_LABELS,
@@ -905,8 +960,8 @@ def main() -> None:
         )
         w_sport = SPORT_FREQ_TO_W[sport_use]
 
-        # ---- Salud – hospitales y farmacias ----
-        st.sidebar.subheader("Salud – hospitales y farmacias")
+        # Salud
+        st.subheader("Salud – hospitales y farmacias")
         hosp_use = st.selectbox(
             "¿Qué uso haces de hospitales/centros de salud?",
             options=HOSPITAL_USE_LABELS,
@@ -914,8 +969,24 @@ def main() -> None:
         )
         w_hospital = HOSPITAL_USE_TO_W[hosp_use]
 
-        # ---- Ranking de características (AHP en modo 'ranking') ----
-        st.sidebar.subheader("Prioriza estas características (1 = más importante)")
+        # Población
+        st.subheader("Tamaño del municipio")
+        if "IDE_PoblacionTotal" in df_raw.columns:
+            min_pop_data = int(df_raw["IDE_PoblacionTotal"].min())
+            max_pop_data = int(df_raw["IDE_PoblacionTotal"].max())
+        else:
+            min_pop_data, max_pop_data = 0, 50000
+
+        pop_min, pop_max = st.slider(
+            "Rango de población del municipio",
+            min_value=min_pop_data,
+            max_value=max_pop_data,
+            value=(min_pop_data, min(50000, max_pop_data)),
+            step=1000,
+        )
+
+        # Ranking de características
+        st.subheader("Prioriza estas características (1 = más importante)")
         ranks: List[float] = []
         for crit in CRITERIA:
             label = f"{CRITERIA_ICONS[crit]} {CRITERIA_LABELS[crit]}"
@@ -929,14 +1000,15 @@ def main() -> None:
             )
             ranks.append(float(rank))
 
-        submitted = st.form_submit_button("Aplicar preferencias")
+        st.button("Aplicar preferencias")  # purely visual
 
-
-    # Accessibility and scores (back-end logic)
+    # ---------------- Back-end logic ----------------
     df = df_raw.copy()
-    # Filter to < 50k population by default, as agreed
     if "IDE_PoblacionTotal" in df.columns:
-        df = df[df["IDE_PoblacionTotal"] < 50000].copy()
+        df = df[
+            (df["IDE_PoblacionTotal"] >= pop_min)
+            & (df["IDE_PoblacionTotal"] <= pop_max)
+        ].copy()
 
     acc_df = compute_accessibility_hours(
         df=df,
@@ -963,14 +1035,15 @@ def main() -> None:
 
     try:
         w_vec = preferences_to_weights(np.array(ranks, dtype=float), mode="ranking")
-        weights: Dict[str, float] = {CRITERIA[i]: float(w_vec[i]) for i in range(len(CRITERIA))}
+        weights: Dict[str, float] = {
+            CRITERIA[i]: float(w_vec[i]) for i in range(len(CRITERIA))
+        }
     except Exception as e:
         st.sidebar.warning(f"No se pudieron calcular los pesos AHP ({e}). Usamos pesos iguales.")
         weights = equal_weights()
 
     scores_df = compute_scores(norm_df, weights)
 
-    # Attach scores into GeoDataFrame
     gdf = gdf_raw.merge(
         scores_df[
             [
@@ -988,38 +1061,80 @@ def main() -> None:
         how="inner",
     )
 
-    # Main view selector (map / list)
+    # ---------------- Main view selector ----------------
     view_option = st.radio(
         "Selecciona vista:",
         ["🗺️ Mapa de municipios", "📋 Lista de municipios"],
         horizontal=True,
+        key="view_selector",
     )
+
 
     if view_option == "🗺️ Mapa de municipios":
         if len(gdf) > 0:
-            # Draw heatmap
-            fig = create_heatmap(gdf)
-            st.plotly_chart(fig, use_container_width=True, key="heatmap")
-
-            # Simple selector under the map to choose municipality for details
-            muni_names = scores_df["Nombre"].tolist()
-            selected_name = st.selectbox(
-                "Selecciona un municipio para ver detalles:",
-                ["Selecciona..."] + muni_names,
-                key="map_municipality_selector",
+            st.markdown(
+                "**Consejo:** haz clic en un municipio del mapa para ver más detalles abajo 👇"
             )
-            if selected_name != "Selecciona...":
-                selected_row = scores_df[scores_df["Nombre"] == selected_name].iloc[0]
-                st.session_state.selected_municipality = selected_row
+            suppress = st.session_state.pop("suppress_map_selection", False)
+
+            fig = create_heatmap(gdf)
+            event = st.plotly_chart(
+                fig,
+                key="heatmap",
+                width="stretch",
+                on_select="rerun",
+                selection_mode="points",
+            )
+
+            if (
+                not suppress
+                and event
+                and event.selection
+                and event.selection["point_indices"]
+            ):
+                idx = event.selection["point_indices"][0]
+                clicked_name = gdf.iloc[idx]["Nombre"]
+                selected_row = scores_df[scores_df["Nombre"] == clicked_name].iloc[0]
+
+                st.session_state["selected_municipality"] = selected_row
+                st.session_state["details_origin"] = "map"
+                st.session_state["switch_view_to"] = "🗺️ Mapa de municipios"
+  # <- stay in map
         else:
             st.warning("No hay municipios disponibles para mostrar.")
+            
 
-    # Municipality details
+    elif view_option == "📋 Lista de municipios":
+        if len(scores_df) == 0:
+            st.info("No hay municipios disponibles para mostrar.")
+        else:
+            st.markdown("### 📋 Municipios ordenados por puntuación")
+
+            page_size = 10
+            total = len(scores_df)
+            num_pages = max(1, math.ceil(total / page_size))
+
+            page = st.number_input(
+                "Página",
+                min_value=1,
+                max_value=num_pages,
+                value=st.session_state.get("list_page", 1),
+                step=1,
+                key="list_page",
+            )
+
+            start = (page - 1) * page_size
+            end = start + page_size
+            page_df = scores_df.iloc[start:end]
+
+            for _, row in page_df.iterrows():
+                render_municipality_card(row, images)
+
+    # ---------------- Municipality details (for both views) ----------------
     if "selected_municipality" in st.session_state:
         st.markdown("---")
-        st.markdown("### 📍 Detalles del municipio")
         show_municipality_details(
-            st.session_state.selected_municipality, images, scores_df
+            st.session_state["selected_municipality"], images, scores_df
         )
 
 
